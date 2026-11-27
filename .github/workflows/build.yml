@@ -1,28 +1,48 @@
 name: build
+
 on:
   push:
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Ekstrak zip proyek
         run: |
-          ls -la
-          for f in $(ls *.zip | sort -r); do unzip -o -q "$f"; done
-          ls Rykah
+          rm -rf Rykah
+          shopt -s nullglob
+          zip_files=( *.zip )
+          if [ ${#zip_files[@]} -eq 0 ]; then
+            echo "Tidak ada file ZIP proyek!"
+            exit 1
+          fi
+          for f in "${zip_files[@]}"; do
+            unzip -o -q "$f"
+          done
+          test -f Rykah/build.gradle || {
+            echo "build.gradle tidak ditemukan!"
+            exit 1
+          }
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.10.2
+
       - name: Build
         working-directory: Rykah
         run: gradle build --no-daemon
+
       - uses: actions/upload-artifact@v4
         with:
           name: rykah-jar
           path: Rykah/build/libs/*.jar
+          if-no-files-found: error
