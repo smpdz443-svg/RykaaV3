@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Ekstrak zip proyek
         run: |
-          unzip -q iniRykah-project-v1_3_1.zip
+          unzip -q iiniRykah-project-v1_3_1.zip
           ls Rykah
       - uses: actions/setup-java@v4
         with:
