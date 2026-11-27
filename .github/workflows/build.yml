@@ -1,48 +1,59 @@
-name: build
+name: Build Rykah
 
 on:
   push:
+    paths:
+      - 'aaRykah-v1_4_0.zip'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Ekstrak zip proyek
-        run: |
-          rm -rf Rykah
-          shopt -s nullglob
-          zip_files=( *.zip )
-          if [ ${#zip_files[@]} -eq 0 ]; then
-            echo "Tidak ada file ZIP proyek!"
-            exit 1
-          fi
-          for f in "${zip_files[@]}"; do
-            unzip -o -q "$f"
-          done
-          test -f Rykah/build.gradle || {
-            echo "build.gradle tidak ditemukan!"
-            exit 1
-          }
-
-      - uses: actions/setup-java@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: '21'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Extract Rykah project
+        shell: bash
+        run: |
+          PROJECT_ZIP="aaRykah-v1_4_0.zip"
+          if [[ ! -f "$PROJECT_ZIP" ]]; then
+            echo "ERROR: $PROJECT_ZIP tidak ditemukan di root repository."
+            ls -la
+            exit 1
+          fi
+
+          unzip -oq "$PROJECT_ZIP" -d extracted
+
+          if [[ ! -f extracted/Rykah/build.gradle ]]; then
+            echo "ERROR: Struktur ZIP tidak sesuai. File extracted/Rykah/build.gradle tidak ditemukan."
+            echo "Isi hasil ekstraksi:"
+            find extracted -maxdepth 3 -type f | sort | head -100
+            exit 1
+          fi
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.10.2
+          gradle-version: '8.10.2'
 
-      - name: Build
-        working-directory: Rykah
-        run: gradle build --no-daemon
+      - name: Build Rykah Fabric mod
+        working-directory: extracted/Rykah
+        run: gradle clean build --no-daemon
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload compiled JAR
+        uses: actions/upload-artifact@v4
         with:
-          name: rykah-jar
-          path: Rykah/build/libs/*.jar
+          name: Rykah-1.4.0-Minecraft-1.21.1
+          path: extracted/Rykah/build/libs/*.jar
           if-no-files-found: error
